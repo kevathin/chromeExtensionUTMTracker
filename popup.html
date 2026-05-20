@@ -1,7 +1,72 @@
 <html>
-    <body>
+    <head>
+        <title>UTM Tracker Popup</title>
+        <link rel="stylesheet" href="main.css">
         <script src="popup.js"></script>
-        <h1>Popup</h1>
-        <p>This is the popup content.</p>
+    </head>
+    <body>
+        <div class="mainHead">
+            <h1>UTM Tracker</h1>
+        </div>
+        <div class="mainContent">
+            <button id="viewCookieHistoryBtn" class="homepageButton">View Cookie History</button>
+            <button id="viewCallHistoryBtn" class="homepageButton">View Call History</button>
+            <button id="viewTrackedCookiesBtn" class="homepageButton">View Tracked Cookies</button>
+            <button id="viewTrackedCallsBtn" class="homepageButton">View Tracked Calls</button>
+        </div>
     </body>
 </html>
+
+
+<!-- 
+    history section template format:
+
+    history box: ----------- this box is unique to the page
+    1. historyBoxhead
+    2. historyBoxcontent (another history box) ------------- list list of boxes are unique to either page stage or domain of api call
+    2.1. historyBoxhead
+    2.2. historyBoxcontent (call record box or cookie box) ------------- list of cookies or list of api call data
+-->
+
+<template id="historySectionTemplate">
+    <div class="historyBox">
+        <div class="historyBoxHead">
+            <img class="dropDownArrow">  <!--Shows historyBoxContent-->
+            <h2 class="historyBoxTitle"></h2> <!--page name-->
+        </div>
+        <div class="historyBoxContent"> <!--list of either sub boxes-->
+
+        </div>
+    </div>
+</template>
+
+<template id="callRecordTemplate">
+    <div class="callRecordBox">
+        <div class="callRecordBoxHead">
+            <img class="dropDownArrow"> <!--Shows callRecord-->
+            <h4 class="callRecordBoxTitle"></h4> <!--id-->
+        </div>
+        <div class="callRecord">
+            <p class="callRecordUrl"></p> <!--url-->
+            <p class="callTimeStamp"></p> <!--timestamp-->
+            <p class="callRecordSource"></p> <!--utm_source-->
+            <p class="callRecordMedium"></p> <!--utm_medium-->
+        </div>
+    </div>
+</template>
+
+<!--
+    main template format:
+
+    main
+        1. main head: 
+        2. main content:
+-->
+
+<template id="mainTemplate">
+        <div class="mainHead">
+            <h1></h1>
+        </div>
+        <div class="mainContent">
+        </div>
+</template>
