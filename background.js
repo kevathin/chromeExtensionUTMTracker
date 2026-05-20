@@ -7,20 +7,36 @@ function fillHostTable(db){
     const store = tx.objectStore('hosts');
     const sampleHosts = [
         { hostname: 'analytics.google.com', standardname: 'Google Analytics', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', urlid: 'dl' },
-        { hostname: 'y.clarity.ms', standardname: 'Clarity', storagetype: 'localStorage', source: 'utm_source', medium: 'utm_medium', urlid: 'url2' }
+        { hostname: 'y.clarity.ms', standardname: 'Clarity', storagetype: 'notfound', source: 'notfound', medium: 'notfound', urlid: 'notfound' },
+        { hostname: 'track.hubspot.com', standardname: 'HubSpot', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', urlid: 'pu' },
+        { hostname: 'www.facebook.com', standardname: 'Facebook Pixel', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', urlid: 'dl' },
     ];
+    for (const host of sampleHosts) {
+        store.put(host);
+    }
 }
 
 function fillCookieTable(db){
     const tx = db.transaction('cookies', 'readwrite');
     const store = tx.objectStore('cookies');
     const sampleCookies = [
-        { name: 'hs_login_email', type: 'email' },
-        { name: 'ec_email', type: 'email' },
-        { name: 'ec_phone', type: 'phone' },
-        { name: 'utm_source', type: 'source' },
-        { name: 'utm_medium', type: 'medium' }
+        { name: 'hs_login_email', type: 'email', software: 'HubSpot' },
+        { name: 'hs_login_phone', type: 'phone', software: 'HubSpot' },
+        { name: 'ec_email', type: 'email', software: 'default' },
+        { name: 'ec_phone', type: 'phone', software: 'default' },
+        { name: 'utm_source', type: 'source', software: 'default' },
+        { name: 'utm_campaign', type: 'campaign', software: 'default' },
+        { name: 'sa-u-source', type: 'source', software: 'StackAdapt'},
+        { name: 'utm_medium', type: 'medium', software: 'default' },
+        { name: 'calltrk_landing', type: 'landing', software: 'Callrail'},
+        { name: 'calltrk_session_id', type: 'sessionid', software: 'Callrail'},
+        { name: 'sa-user-id', type: 'userid', software: 'StackAdapt'},
+        { name: 'wix_utm_params', type: 'source', software: 'Wix' },
+        { name: 'mpaSessionId', type: 'sessionid', software: 'default' },
     ];
+    for (const cookie of sampleCookies) {
+        store.put(cookie);
+    }
 }
 
 request.onupgradeneeded = function(event) {
@@ -54,6 +70,7 @@ request.onupgradeneeded = function(event) {
         const store = db.createObjectStore('cookies', {keyPath: 'name', autoIncrement: false });
         store.createIndex('name', 'name', { unique: true });
         store.createIndex('type', 'type', { unique: false });
+        store.createIndex('software', 'software', { unique: false});
         fillCookieTable(db);
     }
 
