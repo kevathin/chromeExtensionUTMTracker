@@ -1,7 +1,63 @@
-const request = indexedDB.open('UTMTrackerDB', 1);
-let db;
+function openDatabase() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('UTMTrackerDB', 1);
+        request.onupgradeneeded = async function(event) {
+            const db = event.target.result;
+            // Create `hosts` store and indexes if missing
+            if (!db.objectStoreNames.contains('hosts')) {
+                const store = db.createObjectStore('hosts', { keyPath: 'hostname', autoIncrement: false});
+                store.createIndex('hostname', 'hostname', { unique: true });
+                store.createIndex('standardname', 'standardname', { unique: false });
+                store.createIndex('storagetype', 'storagetype', { unique: false });
+                store.createIndex('source', 'source', { unique: false });
+                store.createIndex('medium', 'medium', { unique: false });
+                store.createIndex('urlid', 'urlid', { unique: false });
+            }
 
+            // Create `call` store for API calls
+            if (!db.objectStoreNames.contains('call')) {
+                const store = db.createObjectStore('call', { keyPath: 'id', autoIncrement: true });
+                store.createIndex('time', 'time', { unique: false });
+                store.createIndex('hostname', 'hostname', { unique: false });
+                store.createIndex('utmsource', 'utmsource', { unique: false });
+                store.createIndex('utmmedium', 'utmmedium', { unique: false });
+                store.createIndex('apiurl', 'apiurl', { unique: false });
+                store.createIndex('currenturl', 'currenturl', { unique: false });
+            }
 
+            // Create `cookies` store with compound primary key (location + name)
+            if (!db.objectStoreNames.contains('cookies')) {
+                const store = db.createObjectStore('cookies', {keyPath: 'name', autoIncrement: false });
+                store.createIndex('name', 'name', { unique: true });
+                store.createIndex('type', 'type', { unique: false });
+                store.createIndex('software', 'software', { unique: false});
+            }
+
+            // Create `cookiehistory` store for cookie value history
+            if (!db.objectStoreNames.contains('cookiehistory')) {
+                const store = db.createObjectStore('cookiehistory', { keyPath: 'id', autoIncrement: true });
+                store.createIndex('cookieid', 'cookieid', { unique: false});
+                store.createIndex('value', 'value', { unique: false });
+                store.createIndex('stage', 'stage', { unique: false });
+                store.createIndex('currenturl', 'currenturl', { unique: false });
+            }
+
+            event.target.transaction.oncomplete = function() {
+                fillHostTable(db);
+                fillCookieTable(db);
+            }
+        }
+        request.onsuccess = function(event) {
+            const db = event.target.result;
+            resolve(db);
+        }
+        request.onerror = function(event) {
+            reject(event.target.error);
+        }
+    });
+}
+// Sample hosts to populate the `hosts` store. In a real implementation, this would be dynamic based on observed hostnames.
+// Note: `storagetype` indicates where UTM parameters are typically stored for that host (e.g., 'url', 'cookie', 'notfound' if unknown).
 function fillHostTable(db){
     const tx = db.transaction('hosts', 'readwrite');
     const store = tx.objectStore('hosts');
@@ -9,13 +65,14 @@ function fillHostTable(db){
         { hostname: 'analytics.google.com', standardname: 'Google Analytics', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', urlid: 'dl' },
         { hostname: 'y.clarity.ms', standardname: 'Clarity', storagetype: 'notfound', source: 'notfound', medium: 'notfound', urlid: 'notfound' },
         { hostname: 'track.hubspot.com', standardname: 'HubSpot', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', urlid: 'pu' },
-        { hostname: 'www.facebook.com', standardname: 'Facebook Pixel', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', urlid: 'dl' },
+        { hostname: 'www.facebook.com', standardname: 'Facebook Pixel', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', urlid: 'dl' }
     ];
     for (const host of sampleHosts) {
         store.put(host);
     }
 }
 
+// Sample cookies to populate the `cookies` store. In a real implementation, this would be dynamic based on observed cookies.
 function fillCookieTable(db){
     const tx = db.transaction('cookies', 'readwrite');
     const store = tx.objectStore('cookies');
@@ -32,81 +89,44 @@ function fillCookieTable(db){
         { name: 'calltrk_session_id', type: 'sessionid', software: 'Callrail'},
         { name: 'sa-user-id', type: 'userid', software: 'StackAdapt'},
         { name: 'wix_utm_params', type: 'source', software: 'Wix' },
-        { name: 'mpaSessionId', type: 'sessionid', software: 'default' },
+        { name: 'mpaSessionId', type: 'sessionid', software: 'default' }
     ];
     for (const cookie of sampleCookies) {
         store.put(cookie);
     }
 }
 
-request.onupgradeneeded = function(event) {
-    db = event.target.result;
-    // Create `hosts` store and indexes if missing
-    if (!db.objectStoreNames.contains('hosts')) {
-        const store = db.createObjectStore('hosts', { keyPath: 'hostname', autoIncrement: false});
-        store.createIndex('hostname', 'hostname', { unique: true });
-        store.createIndex('standardname', 'standardname', { unique: false });
-        store.createIndex('storagetype', 'storagetype', { unique: false });
-        store.createIndex('source', 'source', { unique: false });
-        store.createIndex('medium', 'medium', { unique: false });
-        store.createIndex('urlid', 'urlid', { unique: false });
-        fillHostTable(db);
-    }
-
-    // Create `call` store for API calls
-    if (!db.objectStoreNames.contains('call')) {
-        const store = db.createObjectStore('call', { keyPath: 'id', autoIncrement: true });
-        store.createIndex('time', 'time', { unique: false });
-        store.createIndex('hostname', 'hostname', { unique: false });
-        store.createIndex('utmsource', 'utmsource', { unique: false });
-        store.createIndex('utmmedium', 'utmmedium', { unique: false });
-        store.createIndex('apiurl', 'apiurl', { unique: false });
-        store.createIndex('currenturl', 'currenturl', { unique: false });
-        
-    }
-
-    // Create `cookies` store with compound primary key (location + name)
-    if (!db.objectStoreNames.contains('cookies')) {
-        const store = db.createObjectStore('cookies', {keyPath: 'name', autoIncrement: false });
-        store.createIndex('name', 'name', { unique: true });
-        store.createIndex('type', 'type', { unique: false });
-        store.createIndex('software', 'software', { unique: false});
-        fillCookieTable(db);
-    }
-
-    // Create `cookiehistory` store for cookie value history
-    if (!db.objectStoreNames.contains('cookiehistory')) {
-        const store = db.createObjectStore('cookiehistory', { keyPath: 'id', autoIncrement: true });
-        store.createIndex('cookieid', 'cookieid', { unique: false});
-        store.createIndex('value', 'value', { unique: false });
-        store.createIndex('stage', 'stage', { unique: false });
-        store.createIndex('currenturl', 'currenturl', { unique: false });
-    }
-};
-
-request.onsuccess = function(event) {
-    db = event.target.result;
-    console.log('Database opened successfully');
-}
-
+// Listen for web requests
 chrome.webRequest.onBeforeRequest.addListener(
-    function(details) {
+    (details) => {
+        // Extract hostname from the URL
         const url = new URL(details.url);
         const hostname = url.hostname;
-        
-        // check if hostname is in the database
-        let transaction = db.transaction(['hosts'], 'readonly');
-        let store = transaction.objectStore('hosts');
-        let getRequest = store.get(hostname);
-        
-        getRequest.onsuccess = function() {
-            if (getRequest.result) {
-                // Hostname exists in the database, do something with it
-                console.log('Hostname found in database:', getRequest.result);
-            } else {
-                // Hostname not found, you can choose to add it to the database or ignore
-                console.log('Hostname not found in database:', hostname);
+
+        // open the database. 
+        openDatabase().then(db => {
+            // open db transaction
+            let transaction = db.transaction(['hosts'], 'readonly');
+            // access the `hosts` object store
+            let store = transaction.objectStore('hosts');
+            // get the record for the hostname
+            let getRequest = store.get(hostname);
+            
+            // handle the result of the get request
+            getRequest.onsuccess = function() {
+                if (getRequest.result) {
+                    // if hostname exists
+                    
+                } else {
+                    // if hostname does not exist
+                    
+                }
             }
-        };
-    }   
+        }).catch(error => {
+            console.error('Error opening database:', error);
+        });
+    }, 
+    // Filter to listen to all urls
+    { urls: ["<all_urls>"] }
 );
+

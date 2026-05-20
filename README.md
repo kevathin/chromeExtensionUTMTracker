@@ -2,7 +2,9 @@
 A Google Chrome Extension that tracks UTM parameters
 
 
-Database Structure
+//-------------------------------------------------------//
+//------------------Database Structure-------------------//
+//-------------------------------------------------------//
 
 call:
 --> id: unqiue api call id (pk ordered)
@@ -22,14 +24,82 @@ hosts:
 --> urlid: the header id containing the url
 
 cookies:
---> id: location + name
 --> name: the specific cookie name (pk)
---> location: where is the cookie location (pk) 
 --> type: source, or medium, or campaign, etc. (aka what does it store)
+--> software: tracking software name or default.
 
 cookiehistory:
 --> id: (pk ordered)
---> cookieid: (fk)
+--> cookieid: specific cookie mentioned(fk)
 --> value: value of cookie
---> stage: (start, end, idle)
+--> stage: at what stage of the page was this cookie tracked(start, end, idle)
 --> currenturl: current url of user
+
+//-------------------------------------------------------//
+//------------------Popup Structure----------------------//
+//-------------------------------------------------------//
+
+Homepage (when user clicks popup)
+[]-----------------------------------------[]
+|                                           |
+|              UTM Tracker                  |
+|                                           |
+|[]---------------------------------------[]|
+| |        View Cookie History            | |
+|[]---------------------------------------[]|
+|[]---------------------------------------[]|
+| |        View Call History              | |
+|[]---------------------------------------[]|
+|[]---------------------------------------[]|
+| |        View Tracked Cookies           | |
+|[]---------------------------------------[]|
+|[]---------------------------------------[]|
+| |        View Tracked calls             | |
+|[]---------------------------------------[]|
+[]-----------------------------------------[]
+
+History Pages (view cookie history or view call history)
+[]-----------------------------------------[]
+|                                           |
+|              {{type}} history             |
+|                                           |
+|[]---------------------------------------[]|
+| |    v    {{page name}}                 | | (drop down)
+| | []---------------------------------[] | |
+| |  |        snapshot A.              |  | | (snapnots contain tracked data using a scroll method to prevent clutter)
+| | []---------------------------------[] | |
+| | []---------------------------------[] | |
+| |  |        snapshot B (older).      |  | |
+| | []---------------------------------[] | |
+|[]---------------------------------------[]|
+|[]---------------------------------------[]|
+| |    >    {{page name}}                 | | (drop down)
+|[]---------------------------------------[]|
+|[]-----------------[][]-----------------[] |
+| |      back       |  |   clear history |  | (buttons)
+|[]-----------------[][]-----------------[] |
+[]-----------------------------------------[]
+
+
+Tracked settings (view tracked cookies or view tracked domains)
+
+[]-----------------------------------------[]
+|                                           |
+|             tracked {{type}}              |
+|                                           |
+|[]---------------------------------------[]|
+| |    v    {{tracked name}}   []remove[] | | (drop down)
+| | []---------------------------------[] | |
+| |  | variable:    value      []edit[]|  | |
+| | []---------------------------------[] | |
+| | []---------------------------------[] | |
+| |  | variable:    value      []edit[]|  | |
+| | []---------------------------------[] | |
+|[]---------------------------------------[]|
+|[]---------------------------------------[]|
+| |    >    {{tracked name}}              | | (drop down)
+|[]---------------------------------------[]|
+|[]-----------------[][]-----------------[] |
+| |      back       |  |  restore default|  | (buttons)
+|[]-----------------[][]-----------------[] |
+[]-----------------------------------------[]
