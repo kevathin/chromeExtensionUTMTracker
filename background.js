@@ -1,8 +1,18 @@
 function openDatabase() {
     return new Promise((resolve, reject) => {
+
+        // request to open or create the database. 
         const request = indexedDB.open('UTMTrackerDB', 1);
+
+        // if database does not exist or if the version number is higher than the existing version.
+        // If so, it creates the database and object stores.
+        // Warning: this creates a read/write transaction
         request.onupgradeneeded = async function(event) {
+
+            // fetch the database from the event
+            // 
             const db = event.target.result;
+
             // Create `hosts` store and indexes if missing
             if (!db.objectStoreNames.contains('hosts')) {
                 const store = db.createObjectStore('hosts', { keyPath: 'hostname', autoIncrement: false});
@@ -47,15 +57,20 @@ function openDatabase() {
                 fillCookieTable(db);
             }
         }
+
+        // If database exists, return the database instance.
         request.onsuccess = function(event) {
             const db = event.target.result;
             resolve(db);
         }
+
+        // If an error occurs, pray
         request.onerror = function(event) {
             reject(event.target.error);
         }
     });
 }
+
 // Sample hosts to populate the `hosts` store. In a real implementation, this would be dynamic based on observed hostnames.
 // Note: `storagetype` indicates where UTM parameters are typically stored for that host (e.g., 'url', 'cookie', 'notfound' if unknown).
 function fillHostTable(db){
@@ -103,7 +118,7 @@ chrome.webRequest.onBeforeRequest.addListener(
         const url = new URL(details.url);
         const hostname = url.hostname;
 
-        // open the database. 
+        // open the database, with filter set to all urls
         openDatabase().then(db => {
             // open db transaction
             let transaction = db.transaction(['hosts'], 'readonly');
