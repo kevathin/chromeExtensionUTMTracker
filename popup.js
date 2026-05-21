@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Variables 
+    const dbchannel = new BroadcastChannel('db_updates');
     const homebuttons = document.getElementsByClassName('homepageButton');
     const returnbutton = document.getElementsByClassName('returnButton');
 
@@ -39,6 +40,15 @@ document.addEventListener('DOMContentLoaded', function() {
             
         });
     }
+
+    // ---------------- Channel Listeners ----------------
+
+    // listen for db updates from background
+    dbchannel.onmessage = function(event) {
+        const message = event.data;
+        console.log('Received message on channel:', message);
+        // Handle the message as needed (e.g., update UI, fetch new data, etc.)
+    }
 });
 
 function openCookieHistory(){
@@ -48,7 +58,7 @@ function openCookieHistory(){
 
 function openCallHistory(){
     const sectionTemplate = document.getElementById('historySectionTemplate');
-    
+
 }
 
 function openTrackedCookies(){
@@ -57,4 +67,8 @@ function openTrackedCookies(){
 
 function openTrackedCalls(){
 
+}
+
+function getCurrentView(){
+    
 }

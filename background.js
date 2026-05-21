@@ -115,10 +115,10 @@ chrome.webRequest.onBeforeRequest.addListener(
             // handle the result of the get request
             getRequest.onsuccess = function() {
                 if (getRequest.result) {
-                    // if hostname exists
+                    // if hostname exists, add to call history with relevant info
                     
                 } else {
-                    // if hostname does not exist
+                    // if hostname does not exist, don't do anything for now. 
                     
                 }
             }
