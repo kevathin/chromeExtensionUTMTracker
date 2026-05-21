@@ -22,6 +22,7 @@ function openDatabase() {
                 store.createIndex('source', 'source', { unique: false });
                 store.createIndex('medium', 'medium', { unique: false });
                 store.createIndex('urlid', 'urlid', { unique: false });
+                store.createIndex('historicurlid', 'historicurlid', { unique: false });
             }
 
             // Create `call` store for API calls
@@ -77,10 +78,10 @@ function fillHostTable(db){
     const tx = db.transaction('hosts', 'readwrite');
     const store = tx.objectStore('hosts');
     const sampleHosts = [
-        { hostname: 'analytics.google.com', standardname: 'Google Analytics', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', urlid: 'dl' },
-        { hostname: 'y.clarity.ms', standardname: 'Clarity', storagetype: 'notfound', source: 'notfound', medium: 'notfound', urlid: 'notfound' },
-        { hostname: 'track.hubspot.com', standardname: 'HubSpot', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', urlid: 'pu' },
-        { hostname: 'www.facebook.com', standardname: 'Facebook Pixel', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', urlid: 'dl' }
+        { hostname: 'analytics.google.com', standardname: 'Google Analytics', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', urlid: 'dl', historicurlid: 'dr' },
+        { hostname: 'y.clarity.ms', standardname: 'Clarity', storagetype: 'notfound', source: 'notfound', medium: 'notfound', urlid: 'notfound', historicurlid: 'notfound'},
+        { hostname: 'track.hubspot.com', standardname: 'HubSpot', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', urlid: 'pu', historicurlid: 'r'},
+        { hostname: 'www.facebook.com', standardname: 'Facebook Pixel', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', urlid: 'dl', historicurlid: 'rl'}
     ];
     for (const host of sampleHosts) {
         store.put(host);
@@ -129,9 +130,108 @@ chrome.webRequest.onBeforeRequest.addListener(
             
             // handle the result of the get request
             getRequest.onsuccess = function() {
+                // if hostname exists, add to call history with relevant info
                 if (getRequest.result) {
-                    // if hostname exists, add to call history with relevant info
-                    
+                    // get host info
+                    const host = getRequest.result;
+                    // get parameters from api call url
+                    const params = url.searchParams;
+
+                    let utmSource = '';
+                    let utmMedium = '';
+
+                    // current user url when api call is made.
+                    let recordedCurrentUrl = details.documentUrl || details.initiator || details.url;
+
+                    // Try to extract UTM parameters in priority order:
+                    // 1. Check historicurlid (initial page URL with UTM params)
+                    // 2. Check urlid (current page URL)
+                    // 3. Check API call URL itself
+                    // 4. Set to 'notfound'
+
+                    let utmFound = false;
+
+                    // Option A: Check historicurlid for UTM parameters
+                    if (host.historicurlid && params.has(host.historicurlid)) {
+                        const historicUrlValue = params.get(host.historicurlid) || '';
+                        try {
+                            const decodedHistoricUrlValue = decodeURIComponent(historicUrlValue);
+                            const historicUrl = new URL(decodedHistoricUrlValue);
+                            const historicParams = historicUrl.searchParams;
+                            const historicSource = historicParams.get(host.source);
+                            const historicMedium = historicParams.get(host.medium);
+                            if (historicSource || historicMedium) {
+                                utmSource = historicSource || 'notfound';
+                                utmMedium = historicMedium || 'notfound';
+                                recordedCurrentUrl = historicUrl.href;
+                                utmFound = true;
+                                console.log('Found UTM params in historicurlid');
+                            }
+                        } catch (error) {
+                            console.warn('Unable to parse historicurlid:', host.historicurlid, historicUrlValue, error);
+                        }
+                    }
+
+                    // Option B: Check urlid for UTM parameters
+                    if (!utmFound && host.urlid && params.has(host.urlid)) {
+                        const nestedUrlValue = params.get(host.urlid) || '';
+                        try {
+                            const decodedNestedUrlValue = decodeURIComponent(nestedUrlValue);
+                            const nestedUrl = new URL(decodedNestedUrlValue);
+                            const nestedParams = nestedUrl.searchParams;
+                            const nestedSource = nestedParams.get(host.source);
+                            const nestedMedium = nestedParams.get(host.medium);
+                            if (nestedSource || nestedMedium) {
+                                utmSource = nestedSource || 'notfound';
+                                utmMedium = nestedMedium || 'notfound';
+                                recordedCurrentUrl = nestedUrl.href;
+                                utmFound = true;
+                                console.log('Found UTM params in urlid');
+                            }
+                        } catch (error) {
+                            console.warn('Unable to parse urlid:', host.urlid, nestedUrlValue, error);
+                        }
+                    }
+
+                    // Option C: Check API call URL itself
+                    if (!utmFound) {
+                        const apiSource = params.get(host.source);
+                        const apiMedium = params.get(host.medium);
+                        if (apiSource || apiMedium) {
+                            utmSource = apiSource || 'notfound';
+                            utmMedium = apiMedium || 'notfound';
+                            utmFound = true;
+                            console.log('Found UTM params in API call URL');
+                        }
+                    }
+
+                    // If no UTM params found anywhere, mark as notfound
+                    if (!utmFound) {
+                        utmSource = 'notfound';
+                        utmMedium = 'notfound';
+                        console.log('UTM params not found in any source');
+                    }
+
+                    const callRecord = {
+                        time: Date.now(),
+                        hostname: hostname,
+                        utmsource: utmSource,
+                        utmmedium: utmMedium,
+                        apiurl: details.url,
+                        currenturl: recordedCurrentUrl
+                    };
+
+                    const writeTx = db.transaction(['call'], 'readwrite');
+                    const callStore = writeTx.objectStore('call');
+                    const addRequest = callStore.add(callRecord);
+
+                    addRequest.onsuccess = function() {
+                        console.log('Added call history record:', callRecord);
+                    };
+
+                    addRequest.onerror = function(event) {
+                        console.error('Error adding call history record:', event.target.error);
+                    };
                 } else {
                     // if hostname does not exist, don't do anything for now. 
                     

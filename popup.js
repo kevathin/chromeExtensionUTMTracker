@@ -17,10 +17,10 @@ document.addEventListener('DOMContentLoaded', function() {
             // open template page based on button id
             switch (buttonId) {
                 case 'viewCookieHistoryBtn':
-                    openCallHistory();
+                    openCookieHistory();
                     break;
                 case 'viewCallHistoryBtn':
-                    openCookieHistory();
+                    openCallHistory();
                     break;
                 case 'viewTrackedCookiesBtn':
                     openTrackedCookies();
@@ -52,15 +52,24 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function openCookieHistory(){
+    // get templates
     const sectionTemplate = document.getElementById('historySectionTemplate');
     const mainTemplate = document.getElementById('mainTemplate');
+
+
+    // replace footer
+    createHistoryFooterButtons('Cookie');
 }
 
 function openCallHistory(){
+    // get templates
     const sectionTemplate = document.getElementById('historySectionTemplate');
     const mainTemplate = document.getElementById('mainTemplate');
     const callRecordTemplate = document.getElementById('callRecordTemplate');
 
+
+    // replace footer
+    createHistoryFooterButtons('Call');
 }
 
 function openTrackedCookies(){
@@ -96,7 +105,26 @@ function updateCookieHistoryView(){
     
 }
 
-function createFooterButtons(page){
+function createSettingsFooterButtons(page){
+    // page is either 'Call' or 'Cookie' - determines which clear function the clear button calls
+    const pageName = String(page).trim();
+    if (!pageName) {
+        console.error('createFooterButtons requires a page name.');
+        return;
+    }
+
+    clearFooterButtons();
+
+}
+
+function clearFooterButtons(){
+    const existingFooter = document.getElementById('pageFooter');
+    if (existingFooter) {
+        existingFooter.remove();
+    }
+}
+
+function createHistoryFooterButtons(page){
     // page is either 'Call' or 'Cookie' - determines which clear function the clear button calls
     const pageName = String(page).trim();
     if (!pageName) {
@@ -105,10 +133,7 @@ function createFooterButtons(page){
     }
 
     // remove existing footer if it exists to prevent duplicates
-    const existingFooter = document.getElementById('pageFooter');
-    if (existingFooter) {
-        existingFooter.remove();
-    }
+    clearFooterButtons();
 
     // create a new footer element with id 'pageFooter'
     const footer = document.createElement('footer');
@@ -206,6 +231,7 @@ function openDatabase() {
                 store.createIndex('source', 'source', { unique: false });
                 store.createIndex('medium', 'medium', { unique: false });
                 store.createIndex('urlid', 'urlid', { unique: false });
+                store.createIndex('historicurlid', 'historicurlid', { unique: false });
             }
 
             // Create `call` store for API calls
@@ -261,10 +287,10 @@ function fillHostTable(db){
     const tx = db.transaction('hosts', 'readwrite');
     const store = tx.objectStore('hosts');
     const sampleHosts = [
-        { hostname: 'analytics.google.com', standardname: 'Google Analytics', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', urlid: 'dl' },
-        { hostname: 'y.clarity.ms', standardname: 'Clarity', storagetype: 'notfound', source: 'notfound', medium: 'notfound', urlid: 'notfound' },
-        { hostname: 'track.hubspot.com', standardname: 'HubSpot', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', urlid: 'pu' },
-        { hostname: 'www.facebook.com', standardname: 'Facebook Pixel', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', urlid: 'dl' }
+        { hostname: 'analytics.google.com', standardname: 'Google Analytics', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', urlid: 'dl', historicurlid: 'dr' },
+        { hostname: 'y.clarity.ms', standardname: 'Clarity', storagetype: 'notfound', source: 'notfound', medium: 'notfound', urlid: 'notfound', historicurlid: 'notfound'},
+        { hostname: 'track.hubspot.com', standardname: 'HubSpot', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', urlid: 'pu', historicurlid: 'r'},
+        { hostname: 'www.facebook.com', standardname: 'Facebook Pixel', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', urlid: 'dl', historicurlid: 'rl'}
     ];
     for (const host of sampleHosts) {
         store.put(host);
