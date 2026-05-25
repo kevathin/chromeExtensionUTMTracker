@@ -226,12 +226,13 @@ function openDatabase() {
             if (!db.objectStoreNames.contains('hosts')) {
                 const store = db.createObjectStore('hosts', { keyPath: 'hostname', autoIncrement: false});
                 store.createIndex('hostname', 'hostname', { unique: true });
+                store.createIndex('excludeContains', 'excludeContains', { unique: false });
                 store.createIndex('standardname', 'standardname', { unique: false });
                 store.createIndex('storagetype', 'storagetype', { unique: false });
                 store.createIndex('source', 'source', { unique: false });
                 store.createIndex('medium', 'medium', { unique: false });
-                store.createIndex('urlid', 'urlid', { unique: false });
-                store.createIndex('historicurlid', 'historicurlid', { unique: false });
+                store.createIndex('curid', 'curid', { unique: false });
+                store.createIndex('historicid', 'historicid', { unique: false });
             }
 
             // Create `call` store for API calls
@@ -262,9 +263,16 @@ function openDatabase() {
                 store.createIndex('currenturl', 'currenturl', { unique: false });
             }
 
+            if(!db.objectStoreNames.contains('settings')) {
+                const store = db.createObjectStore('settings', { keyPath: 'key', autoIncrement: false });
+                store.createIndex('key', 'key', { unique: true });
+                store.createIndex('value', 'value', { unique: false });
+            }
+
             event.target.transaction.oncomplete = function() {
                 fillHostTable(db);
                 fillCookieTable(db);
+                fillSettingsTable(db);
             }
         }
 
@@ -281,16 +289,21 @@ function openDatabase() {
     });
 }
 
+
+// google analytics stores utm parameters in url
+// hubspot stores utm parameters in url
+// clarity stores utm parameters in a bin in the payload of the api call
+// facebook pixel stores utm parameters in url
 // Sample hosts to populate the `hosts` store. In a real implementation, this would be dynamic based on observed hostnames.
 // Note: `storagetype` indicates where UTM parameters are typically stored for that host (e.g., 'url', 'cookie', 'notfound' if unknown).
 function fillHostTable(db){
     const tx = db.transaction('hosts', 'readwrite');
     const store = tx.objectStore('hosts');
     const sampleHosts = [
-        { hostname: 'analytics.google.com', standardname: 'Google Analytics', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', urlid: 'dl', historicurlid: 'dr' },
-        { hostname: 'y.clarity.ms', standardname: 'Clarity', storagetype: 'notfound', source: 'notfound', medium: 'notfound', urlid: 'notfound', historicurlid: 'notfound'},
-        { hostname: 'track.hubspot.com', standardname: 'HubSpot', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', urlid: 'pu', historicurlid: 'r'},
-        { hostname: 'www.facebook.com', standardname: 'Facebook Pixel', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', urlid: 'dl', historicurlid: 'rl'}
+        { hostname: 'analytics.google.com', excludeContains: ['script'], standardname: 'Google Analytics', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', curid: 'dl', historicid: 'dr' },
+        { hostname: 'clarity.ms', excludeContains: ['script'],standardname: 'Clarity', storagetype: 'bin', source: 'notfound', medium: 'notfound', curid: 'notfound', historicid: 'notfound'},
+        { hostname: 'track.hubspot.com', excludeContains: ['script'],standardname: 'HubSpot', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', curid: 'pu', historicid: 'r'},
+        { hostname: 'www.facebook.com', excludeContains: ['script'],standardname: 'Facebook Pixel', storagetype: 'json', source: 'utm_source', medium: 'utm_medium', curid: 'ups[pv]', historicid: 'ups[rpv]'}
     ];
     for (const host of sampleHosts) {
         store.put(host);
@@ -318,5 +331,18 @@ function fillCookieTable(db){
     ];
     for (const cookie of sampleCookies) {
         store.put(cookie);
+    }
+}
+
+function fillSettingsTable(db) {
+    const tx = db.transaction('settings', 'readwrite');
+    const store = tx.objectStore('settings');
+    const sampleSettings = [
+        { key: 'apiTrackingEnabled', value: true },
+        { key: 'cookieTrackingEnabled', value: true },
+        { key: 'trackedHostnames', value: ['analytics.google.com', 'clarity.ms', 'track.hubspot.com', 'www.facebook.com'] }
+    ];
+    for (const setting of sampleSettings) {
+        store.put(setting);
     }
 }
