@@ -84,7 +84,7 @@ function openDatabase() {
 // google analytics stores utm parameters in url
 // hubspot stores utm parameters in url
 // clarity stores utm parameters in a bin in the payload of the api call
-// facebook pixel stores utm parameters in url
+// facebook pixel stores utm parameters in json format in the url
 // Sample hosts to populate the `hosts` store. In a real implementation, this would be dynamic based on observed hostnames.
 // Note: `storagetype` indicates where UTM parameters are typically stored for that host (e.g., 'url', 'cookie', 'notfound' if unknown).
 function fillHostTable(db){
@@ -92,7 +92,7 @@ function fillHostTable(db){
     const store = tx.objectStore('hosts');
     const sampleHosts = [
         { hostname: 'analytics.google.com', excludeContains: ['script'], standardname: 'Google Analytics', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', curid: 'dl', historicid: 'dr' },
-        { hostname: 'clarity.ms', excludeContains: ['script'],standardname: 'Clarity', storagetype: 'bin', source: 'notfound', medium: 'notfound', curid: 'notfound', historicid: 'notfound'},
+        { hostname: 'clarity.ms', excludeContains: ['script'], standardname: 'Clarity', storagetype: 'bin', source: 'notfound', medium: 'notfound', curid: 'notfound', historicid: 'notfound'},
         { hostname: 'track.hubspot.com', excludeContains: ['script'],standardname: 'HubSpot', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', curid: 'pu', historicid: 'r'},
         { hostname: 'www.facebook.com', excludeContains: ['script'],standardname: 'Facebook Pixel', storagetype: 'json', source: 'utm_source', medium: 'utm_medium', curid: 'ups[pv]', historicid: 'ups[rpv]'}
     ];
@@ -300,7 +300,9 @@ function extractUtmsByStorageType(host, url, details) {
         return handleUrlStorageType(host, url, details);
     } else if (host.storagetype === 'bin') {
         return handleBinStorageType(host, url, details);
-    } else {
+    } else if(host.storagetype === 'json') {
+        return handleJsonStorageType(host, url, details);
+    }else {
         // Default fallback for unknown storage types
         console.warn('Unknown storage type:', host.storagetype);
         return {

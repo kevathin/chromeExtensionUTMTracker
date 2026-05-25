@@ -381,6 +381,15 @@ function clearPage(){
  *   }
  * }
  */
+function findHostRecordForCall(hostMap, hostname) {
+    for (const hostKey in hostMap) {
+        if (hostname === hostKey || hostname.endsWith('.' + hostKey)) {
+            return hostMap[hostKey];
+        }
+    }
+    return null;
+}
+
 function fetchCallHistory(){
     return openDatabase().then(db => {
         return new Promise((resolve, reject) => {
@@ -404,7 +413,7 @@ function fetchCallHistory(){
                             // get call current url
                             const currentUrl = call.currenturl || 'notfound';
                             // get call hostname matched with call
-                            const hostRecord = hostMap[call.hostname] || null;
+                            const hostRecord = findHostRecordForCall(hostMap, call.hostname);
                             // get call hostname standard name
                             const standardName = hostRecord?.standardname || call.hostname || 'unknown';
 
@@ -546,7 +555,7 @@ function fillHostTable(db){
     const store = tx.objectStore('hosts');
     const sampleHosts = [
         { hostname: 'analytics.google.com', excludeContains: ['script'], standardname: 'Google Analytics', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', curid: 'dl', historicid: 'dr' },
-        { hostname: 'clarity.ms', excludeContains: ['script'],standardname: 'Clarity', storagetype: 'bin', source: 'notfound', medium: 'notfound', curid: 'notfound', historicid: 'notfound'},
+        { hostname: 'clarity.ms', excludeContains: ['script'], standardname: 'Clarity', storagetype: 'bin', source: 'notfound', medium: 'notfound', curid: 'notfound', historicid: 'notfound'},
         { hostname: 'track.hubspot.com', excludeContains: ['script'],standardname: 'HubSpot', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', curid: 'pu', historicid: 'r'},
         { hostname: 'www.facebook.com', excludeContains: ['script'],standardname: 'Facebook Pixel', storagetype: 'json', source: 'utm_source', medium: 'utm_medium', curid: 'ups[pv]', historicid: 'ups[rpv]'}
     ];
