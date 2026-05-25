@@ -61,15 +61,127 @@ function openCookieHistory(){
     createHistoryFooterButtons('Cookie');
 }
 
+function openSettings(){
+
+}
+
 function openCallHistory(){
     // get templates
     const sectionTemplate = document.getElementById('historySectionTemplate');
     const mainTemplate = document.getElementById('mainTemplate');
     const callRecordTemplate = document.getElementById('callRecordTemplate');
+    // clear page
+    clearPage();
+    // get call history data:
+    fetchCallHistory().then(callHistory => {
+        // step 1: fill main template with "Call History" title and append to body
+        const mainClone = mainTemplate.content.cloneNode(true);
+        const mainTitle = mainClone.querySelector('.mainHead h1');
+        mainTitle.textContent = 'Call History';
+        document.body.appendChild(mainClone);
+        const mainContent = document.querySelector('.mainContent');
 
+        // step 2: iterate through each page (currentUrl)
+        for (const currentUrl in callHistory) {
+            const pageSection = sectionTemplate.content.cloneNode(true);
+            const pageHead = pageSection.querySelector('.historyBoxHead');
+            const pageTitle = pageSection.querySelector('.historyBoxTitle');
+            const pageArrow = pageSection.querySelector('.dropDownArrow');
+            const pageContent = pageSection.querySelector('.historyBoxContent');
 
-    // replace footer
-    createHistoryFooterButtons('Call');
+            // set page title and initialize hidden
+            pageTitle.textContent = currentUrl;
+            pageContent.classList.add('contentHidden');
+            pageArrow.textContent = '>';
+
+            // step 3: add dropdown listener for page section
+            pageHead.addEventListener('click', function() {
+                const isHidden = pageContent.classList.contains('contentHidden');
+                if (isHidden) {
+                    pageContent.classList.remove('contentHidden');
+                    pageArrow.textContent = 'v';
+                } else {
+                    pageContent.classList.add('contentHidden');
+                    pageArrow.textContent = '>';
+                }
+            });
+
+            // step 4: iterate through each standard hostname
+            for (const standardName in callHistory[currentUrl]) {
+                const hostSection = sectionTemplate.content.cloneNode(true);
+                const hostHead = hostSection.querySelector('.historyBoxHead');
+                const hostTitle = hostSection.querySelector('.historyBoxTitle');
+                const hostArrow = hostSection.querySelector('.dropDownArrow');
+                const hostContent = hostSection.querySelector('.historyBoxContent');
+
+                // change h2 to h3 for nested level
+                const h3 = document.createElement('h3');
+                h3.className = 'historyBoxTitle';
+                h3.textContent = standardName;
+                hostTitle.replaceWith(h3);
+
+                // set host section hidden and add listener
+                hostContent.classList.add('contentHidden');
+                hostArrow.textContent = '>';
+
+                hostHead.addEventListener('click', function() {
+                    const isHidden = hostContent.classList.contains('contentHidden');
+                    if (isHidden) {
+                        hostContent.classList.remove('contentHidden');
+                        hostArrow.textContent = 'v';
+                    } else {
+                        hostContent.classList.add('contentHidden');
+                        hostArrow.textContent = '>';
+                    }
+                });
+
+                // step 5: iterate through each call record
+                for (const callId in callHistory[currentUrl][standardName]) {
+                    const call = callHistory[currentUrl][standardName][callId];
+                    const callRecord = callRecordTemplate.content.cloneNode(true);
+                    const callHead = callRecord.querySelector('.callRecordBoxHead');
+                    const callTitle = callRecord.querySelector('.callRecordBoxTitle');
+                    const callArrow = callRecord.querySelector('.dropDownArrow');
+                    const callContent = callRecord.querySelector('.callRecord');
+                    const callUrl = callRecord.querySelector('.callRecordUrl');
+                    const callSource = callRecord.querySelector('.callRecordSource');
+                    const callMedium = callRecord.querySelector('.callRecordMedium');
+
+                    // set call record data with labels
+                    callTitle.textContent = `Call ID: ${callId}`;
+                    callUrl.textContent = `API URL: ${call.apiurl}`;
+                    callSource.textContent = `UTM Source: ${call.utmsource}`;
+                    callMedium.textContent = `UTM Medium: ${call.utmmedium}`;
+
+                    // set call record hidden and add listener
+                    callContent.classList.add('contentHidden');
+                    callArrow.textContent = '>';
+
+                    callHead.addEventListener('click', function() {
+                        const isHidden = callContent.classList.contains('contentHidden');
+                        if (isHidden) {
+                            callContent.classList.remove('contentHidden');
+                            callArrow.textContent = 'v';
+                        } else {
+                            callContent.classList.add('contentHidden');
+                            callArrow.textContent = '>';
+                        }
+                    });
+
+                    hostContent.appendChild(callRecord);
+                }
+
+                pageContent.appendChild(hostSection);
+            }
+
+            mainContent.appendChild(pageSection);
+        }
+
+        // step 6: replace footer
+        createHistoryFooterButtons('Call');
+    }).catch(error => {
+        console.error('Error fetching call history:', error);
+    });
 }
 
 function openTrackedCookies(){
@@ -163,8 +275,9 @@ function createHistoryFooterButtons(page){
     footer.appendChild(returnButton);
     footer.appendChild(clearButton);
 
-    document.body.appendChild(footer);s
+    document.body.appendChild(footer);
 }
+
 
 function clearCookieHistory(){
     openDatabase().then(db => {
@@ -199,6 +312,138 @@ function clearCallHistory(){
         };
     }).catch(error => {
         console.error('Error opening database:', error);
+    });
+}
+
+function clearPage(){
+    const body = document.body;
+    while (body.firstChild) {
+        body.removeChild(body.firstChild);
+    }
+}
+
+/**
+ * Fetch call history and return a nested JSON object grouped by current page URL.
+ *
+ * Result shape:
+ * {
+ *   "currentUrlA": {
+ *     "Host Standard Name A": {
+ *       "callId1": {
+ *         "utmsource": "...",
+ *         "utmmedium": "...",
+ *         "apiurl": "..."
+ *       },
+ *       "callId2": { ... }
+ *     },
+ *     "Host Standard Name B": {
+ *       "callId3": { ... }
+ *     }
+ *   },
+ *   "currentUrlB": {
+ *     "Host Standard Name A": {
+ *       "callId4": { ... }
+ *     }
+ *   }
+ * }
+ *
+ * Notes:
+ * - `currenturl` is the page URL associated with the API call.
+ * - `standardname` groups only hosts that actually made calls on that page.
+ * - Each call ID is stored only under the matching host and current URL.
+ *
+ * Example output:
+ * {
+ *   "https://example.com/page1": {
+ *     "Google Analytics": {
+ *       "3": {
+ *         "utmsource": "newsletter",
+ *         "utmmedium": "email",
+ *         "apiurl": "https://analytics.google.com/g/collect?..."
+ *       }
+ *     }
+ *   },
+ *   "https://example.com/page2": {
+ *     "Google Analytics": {
+ *       "2": {
+ *         "utmsource": "social",
+ *         "utmmedium": "cpc",
+ *         "apiurl": "https://analytics.google.com/g/collect?..."
+ *       }
+ *     },
+ *     "Facebook Pixel": {
+ *       "1": {
+ *         "utmsource": "campaign",
+ *         "utmmedium": "paid",
+ *         "apiurl": "https://www.facebook.com/tr/?..."
+ *       }
+ *     }
+ *   }
+ * }
+ */
+function fetchCallHistory(){
+    return openDatabase().then(db => {
+        return new Promise((resolve, reject) => {
+            const hostMap = {};
+            const result = {};
+            const transaction = db.transaction(['hosts', 'call'], 'readonly');
+            const hostStore = transaction.objectStore('hosts');
+            const callStore = transaction.objectStore('call');
+
+            hostStore.openCursor().onsuccess = function(event) {
+                const cursor = event.target.result;
+                if (cursor) {
+                    hostMap[cursor.key] = cursor.value;
+                    cursor.continue();
+                } else {
+                    callStore.openCursor(null, 'prev').onsuccess = function(callEvent) {
+                        const callCursor = callEvent.target.result;
+                        if (callCursor) {
+                            // get call values
+                            const call = callCursor.value;
+                            // get call current url
+                            const currentUrl = call.currenturl || 'notfound';
+                            // get call hostname matched with call
+                            const hostRecord = hostMap[call.hostname] || null;
+                            // get call hostname standard name
+                            const standardName = hostRecord?.standardname || call.hostname || 'unknown';
+
+                            // set current url key if not exist
+                            if (!result[currentUrl]) {
+                                result[currentUrl] = {};
+                            }
+                            // set standard hostname key if not exist
+                            if (!result[currentUrl][standardName]) {
+                                result[currentUrl][standardName] = {};
+                            }
+
+                            // store call info in the grouped current url and grouped standard hostname.
+                            result[currentUrl][standardName][call.id] = {
+                                utmsource: call.utmsource,
+                                utmmedium: call.utmmedium,
+                                apiurl: call.apiurl
+                            };
+
+                            callCursor.continue();
+                        } else {
+                            resolve(result);
+                        }
+                    };
+
+                    callStore.openCursor().onerror = function(event) {
+                        reject(event.target.error);
+                    };
+                }
+            };
+
+            hostStore.openCursor().onerror = function(event) {
+                reject(event.target.error);
+            };
+
+            transaction.onerror = function(event) {
+                reject(event.target.error);
+            };
+        });
     });
 }
 
@@ -338,8 +583,8 @@ function fillSettingsTable(db) {
     const tx = db.transaction('settings', 'readwrite');
     const store = tx.objectStore('settings');
     const sampleSettings = [
-        { key: 'apiTrackingEnabled', value: true },
-        { key: 'cookieTrackingEnabled', value: true },
+        { key: 'apiTrackingEnabled', value: false },
+        { key: 'cookieTrackingEnabled', value: false },
         { key: 'trackedHostnames', value: ['analytics.google.com', 'clarity.ms', 'track.hubspot.com', 'www.facebook.com'] }
     ];
     for (const setting of sampleSettings) {

@@ -1,6 +1,7 @@
 # chromeExtensionUTMTracker
 A Google Chrome Extension that tracks UTM parameters
 
+database structure out of date, update later
 
 //-------------------------------------------------------//
 //------------------Database Structure-------------------//
@@ -56,9 +57,13 @@ Homepage (when user clicks popup)
 |[]---------------------------------------[]|
 | |        View Tracked calls             | |
 |[]---------------------------------------[]|
+|[]---------------------------------------[]|
+| |        Settings                       | |
+|[]---------------------------------------[]|
 []-----------------------------------------[]
 
 History Pages (view cookie history or view call history)
+(snaphots contain tracked data using a scroll method to prevent clutter) (snapshot can either be the host name for call history or the snapshot name for cookie history)
 []-----------------------------------------[]
 |                                           |
 |              {{type}} history             |
@@ -66,7 +71,7 @@ History Pages (view cookie history or view call history)
 |[]---------------------------------------[]|
 | |    v    {{page name}}                 | | (drop down)
 | | []---------------------------------[] | |
-| |  |        snapshot A.              |  | | (snapnots contain tracked data using a scroll method to prevent clutter)
+| |  |        snapshot A.              |  | | 
 | | []---------------------------------[] | |
 | | []---------------------------------[] | |
 | |  |        snapshot B (older).      |  | |

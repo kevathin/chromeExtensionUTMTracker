@@ -129,8 +129,8 @@ function fillSettingsTable(db) {
     const tx = db.transaction('settings', 'readwrite');
     const store = tx.objectStore('settings');
     const sampleSettings = [
-        { key: 'apiTrackingEnabled', value: true },
-        { key: 'cookieTrackingEnabled', value: true },
+        { key: 'apiTrackingEnabled', value: false },
+        { key: 'cookieTrackingEnabled', value: false },
         { key: 'trackedHostnames', value: ['analytics.google.com', 'clarity.ms', 'track.hubspot.com', 'www.facebook.com'] }
     ];
     for (const setting of sampleSettings) {
@@ -156,12 +156,25 @@ function extractUtmsFromUrl(urlString, host) {
     }
 }
 
+// Helper to resolve the active page URL for a request, including the full path when available.
+function getRecordedCurrentUrl(details) {
+    const pageUrl = details.documentUrl || details.originUrl || details.initiator;
+    if (pageUrl) {
+        try {
+            return new URL(pageUrl).href;
+        } catch (error) {
+            return pageUrl;
+        }
+    }
+    return details.url;
+}
+
 // Handler for 'url' storage type - checks historic URL, current URL, then API URL
 function handleUrlStorageType(host, url, details) {
     const params = url.searchParams;
     let utmSource = '';
     let utmMedium = '';
-    let recordedCurrentUrl = details.documentUrl || details.initiator || details.url;
+    let recordedCurrentUrl = getRecordedCurrentUrl(details);
     let utmFound = false;
 
     // checkpoint 1: check historic url
@@ -222,7 +235,7 @@ function handleUrlStorageType(host, url, details) {
 // Handler for 'bin' storage type - extracts from API-level parameters
 function handleBinStorageType(host, url, details) {
     // check what type of file the payload is. then extract the bin accordingly and handle it. 
-    let recordedCurrentUrl = details.documentUrl || details.initiator || details.url;
+    let recordedCurrentUrl = getRecordedCurrentUrl(details);
     return {
         source: 'notfound',
         medium: 'notfound',
@@ -234,7 +247,7 @@ function handleBinStorageType(host, url, details) {
 // Handler for 'json' storage type.
 // ex urlencoded query parameter: ups[rpv]: "%7B%22utm_source%22%3A%22google%22%2C%22utm_medium%22%3A%22cpc%22%7D"
 function handleJsonStorageType(host, url, details) {
-    let recordedCurrentUrl = details.documentUrl || details.initiator || details.url;
+    let recordedCurrentUrl = getRecordedCurrentUrl(details);
     // checkpoint 1: check historic url
     if (host.historicid && url.searchParams.has(host.historicid)) {
         const historicValue = url.searchParams.get(host.historicid) || '';
@@ -293,7 +306,7 @@ function extractUtmsByStorageType(host, url, details) {
         return {
             source: 'notfound',
             medium: 'notfound',
-            currentUrl: details.documentUrl || details.initiator || details.url
+            currentUrl: getRecordedCurrentUrl(details)
         };
     }
 }
