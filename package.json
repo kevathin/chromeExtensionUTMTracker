@@ -1,0 +1,22 @@
+{
+    "scripts": {
+        "build": "vite build",
+        "dev": "vite build --watch"
+    },
+    "name": "chromeextensionutmtracker",
+    "version": "1.0.0",
+    "description": "A Google Chrome Extension that tracks UTM parameters",
+    "main": "vite.config.js",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/kevathin/chromeExtensionUTMTracker.git"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "type": "commonjs",
+    "bugs": {
+        "url": "https://github.com/kevathin/chromeExtensionUTMTracker/issues"
+    },
+    "homepage": "https://github.com/kevathin/chromeExtensionUTMTracker#readme"
+}
