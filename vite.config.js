@@ -4,10 +4,12 @@ export default defineConfig({
     build: {
         rollupOptions: {
             input: {
-                background: 'src/background.js'
+                background: 'src/background.js',
+                popup: 'src/popup.js'
             },
             output: {
                 entryFileNames: '[name].js',
+                format: 'es'
             }
         }
     }

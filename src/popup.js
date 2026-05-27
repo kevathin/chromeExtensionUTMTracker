@@ -1,5 +1,14 @@
 import { openDatabase, fillHostTable, fillCookieTable, fillSettingsTable } from './utils/dbHelper.js';
 
+/**
+ * because of how vite packages modules, window[functionName] does not work.
+ * So instead we create a mapping of clear functions that can be called by name when creating the footer buttons.
+ */
+const clearFunctions = {
+    clearCallHistory,
+    clearCookieHistory
+};
+
 document.addEventListener('DOMContentLoaded', function() {
     // Variables 
     const dbchannel = new BroadcastChannel('db_updates');
@@ -265,7 +274,7 @@ function createHistoryFooterButtons(page){
     clearButton.textContent = `Clear ${pageName} History`;
     clearButton.addEventListener('click', () => {
         const clearFnName = `clear${pageName}History`;
-        const clearFn = window[clearFnName];
+        const clearFn = clearFunctions[clearFnName];
         if (typeof clearFn === 'function') {
             clearFn();
         } else {
@@ -282,9 +291,13 @@ function createHistoryFooterButtons(page){
 
 
 function clearCookieHistory(){
+    // open db
     openDatabase().then(db => {
+        // open transaction
         const tx = db.transaction('cookiehistory', 'readwrite');
+        // open cookie store
         const store = tx.objectStore('cookiehistory');
+        // clear store
         const request = store.clear();
 
         request.onsuccess = function() {
@@ -300,9 +313,13 @@ function clearCookieHistory(){
 }
 
 function clearCallHistory(){
+    // open db
     openDatabase().then(db => {
+        // open transaction
         const tx = db.transaction('call', 'readwrite');
+        // open call store
         const store = tx.objectStore('call');
+        // clear store
         const request = store.clear();
 
         request.onsuccess = function() {
@@ -318,6 +335,7 @@ function clearCallHistory(){
 }
 
 function clearPage(){
+    // get the document body and remove all child nodes to clear the page
     const body = document.body;
     while (body.firstChild) {
         body.removeChild(body.firstChild);

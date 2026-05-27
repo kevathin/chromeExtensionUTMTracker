@@ -4,7 +4,8 @@
     "description": "A Chrome extension to debug UTM tracking parameters in URLs",
     "manifest_version": 3,
     "background": {
-        "service_worker": "background.js"
+        "service_worker": "dist/background.js",
+        "type": "module"
     },
     "permissions": [
         "activeTab",

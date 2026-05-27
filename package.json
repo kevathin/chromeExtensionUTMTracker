@@ -18,5 +18,8 @@
     "bugs": {
         "url": "https://github.com/kevathin/chromeExtensionUTMTracker/issues"
     },
-    "homepage": "https://github.com/kevathin/chromeExtensionUTMTracker#readme"
+    "homepage": "https://github.com/kevathin/chromeExtensionUTMTracker#readme",
+    "devDependencies": {
+        "vite": "^8.0.14"
+    }
 }
