@@ -19,16 +19,26 @@ function extractUtmsFromUrl(urlString, host) {
 }
 
 // Helper to resolve the active page URL for a request, including the full path when available.
-function getRecordedCurrentUrl(details) {
-    const pageUrl = details.documentUrl || details.originUrl || details.initiator;
-    if (pageUrl) {
-        try {
-            return new URL(pageUrl).href;
-        } catch (error) {
-            return pageUrl;
+async function getRecordedCurrentUrl(details) {
+    return new Promise((resolve) => {
+        // Use details.tabId directly - no guessing which tab is active
+        if (details.tabId && details.tabId > 0) {
+            chrome.tabs.get(details.tabId, (tab) => {
+                if (chrome.runtime.lastError || !tab) {
+                    // fallback if tab isn't accessible
+                    const url = new URL(details.documentUrl || details.initiator || details.url);
+                    resolve(url.hostname + url.pathname);
+                } else {
+                    const url = new URL(tab.url);
+                    resolve(url.hostname + url.pathname);
+                }
+            });
+        } else {
+            // fallback for requests not tied to a tab (e.g. background requests)
+            const url = new URL(details.documentUrl || details.initiator || details.url);
+            resolve(url.hostname + url.pathname);
         }
-    }
-    return details.url;
+    });
 }
 
 // Handler for 'url' storage type - checks historic URL, current URL, then API URL
@@ -36,7 +46,6 @@ function handleUrlStorageType(host, url, details) {
     const params = url.searchParams;
     let utmSource = '';
     let utmMedium = '';
-    let recordedCurrentUrl = getRecordedCurrentUrl(details);
     let utmFound = false;
 
     // checkpoint 1: check historic url
@@ -89,19 +98,16 @@ function handleUrlStorageType(host, url, details) {
     // return the found utm parameters along with the URL they were found in, or 'notfound' if not found in any checkpoint
     return {
         source: utmFound ? utmSource : 'notfound',
-        medium: utmFound ? utmMedium : 'notfound',
-        currentUrl: recordedCurrentUrl
+        medium: utmFound ? utmMedium : 'notfound'
     };
 }
 
 // Handler for 'bin' storage type - extracts from API-level parameters
 function handleBinStorageType(host, url, details) {
     // check what type of file the payload is. then extract the bin accordingly and handle it. 
-    let recordedCurrentUrl = getRecordedCurrentUrl(details);
     return {
         source: 'notfound',
         medium: 'notfound',
-        currentUrl: recordedCurrentUrl
     }
 }
 
@@ -109,7 +115,6 @@ function handleBinStorageType(host, url, details) {
 // Handler for 'json' storage type.
 // ex urlencoded query parameter: ups[rpv]: "%7B%22utm_source%22%3A%22google%22%2C%22utm_medium%22%3A%22cpc%22%7D"
 function handleJsonStorageType(host, url, details) {
-    let recordedCurrentUrl = getRecordedCurrentUrl(details);
     // checkpoint 1: check historic url
     if (host.historicid && url.searchParams.has(host.historicid)) {
         const historicValue = url.searchParams.get(host.historicid) || '';
@@ -120,7 +125,6 @@ function handleJsonStorageType(host, url, details) {
                 return {
                     source: historicResult[host.source] || 'notfound',
                     medium: historicResult[host.medium] || 'notfound',
-                    currentUrl: recordedCurrentUrl
                 };
             }
         } catch (error) {
@@ -138,7 +142,6 @@ function handleJsonStorageType(host, url, details) {
                 return {
                     source: currentResult[host.source] || 'notfound',
                     medium: currentResult[host.medium] || 'notfound',
-                    currentUrl: recordedCurrentUrl
                 };
             }
         } catch (error) {
@@ -150,7 +153,6 @@ function handleJsonStorageType(host, url, details) {
     return {
         source: 'notfound',
         medium: 'notfound',
-        currentUrl: recordedCurrentUrl
     };
     
 }
@@ -169,21 +171,21 @@ function extractUtmsByStorageType(host, url, details) {
         console.warn('Unknown storage type:', host.storagetype);
         return {
             source: 'notfound',
-            medium: 'notfound',
-            currentUrl: getRecordedCurrentUrl(details)
+            medium: 'notfound'
         };
     }
 }
 
 // Helper function to save a call record to the database
-function saveCallRecord(db, hostname, utmResult, details) {
+async function saveCallRecord(db, hostname, utmResult, details) {
+    const currenturl = await getRecordedCurrentUrl(details);
     const callRecord = {
         time: Date.now(),
         hostname: hostname,
         utmsource: utmResult.source,
         utmmedium: utmResult.medium,
         apiurl: details.url,
-        currenturl: utmResult.currentUrl
+        currenturl: currenturl || 'notfoundcheck'
     };
 
     const writeTx = db.transaction(['call'], 'readwrite');

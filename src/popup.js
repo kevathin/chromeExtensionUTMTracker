@@ -146,9 +146,9 @@ function openCallHistory(){
                     }
                 });
 
-                // step 5: iterate through each call record
-                for (const callId in callHistory[currentUrl][standardName]) {
-                    const call = callHistory[currentUrl][standardName][callId];
+                // step 5: iterate through each call record (array ordered newest-first)
+                const callsForHost = callHistory[currentUrl][standardName] || [];
+                for (const call of callsForHost) {
                     const callRecord = callRecordTemplate.content.cloneNode(true);
                     const callHead = callRecord.querySelector('.callRecordBoxHead');
                     const callTitle = callRecord.querySelector('.callRecordBoxTitle');
@@ -159,7 +159,7 @@ function openCallHistory(){
                     const callMedium = callRecord.querySelector('.callRecordMedium');
 
                     // set call record data with labels
-                    callTitle.textContent = `Call ID: ${callId}`;
+                    callTitle.textContent = `Call ID: ${call.id}`;
                     callUrl.textContent = `API URL: ${call.apiurl}`;
                     callSource.textContent = `UTM Source: ${call.utmsource}`;
                     callMedium.textContent = `UTM Medium: ${call.utmmedium}`;
@@ -441,17 +441,19 @@ function fetchCallHistory(){
                             if (!result[currentUrl]) {
                                 result[currentUrl] = {};
                             }
-                            // set standard hostname key if not exist
+                            // set standard hostname key if not exist - use an array to preserve insertion order
                             if (!result[currentUrl][standardName]) {
-                                result[currentUrl][standardName] = {};
+                                result[currentUrl][standardName] = [];
                             }
 
                             // store call info in the grouped current url and grouped standard hostname.
-                            result[currentUrl][standardName][call.id] = {
+                            // Cursor is opened with reverse order; push to array to keep newest-first order.
+                            result[currentUrl][standardName].push({
+                                id: call.id,
                                 utmsource: call.utmsource,
                                 utmmedium: call.utmmedium,
                                 apiurl: call.apiurl
-                            };
+                            });
 
                             callCursor.continue();
                         } else {
