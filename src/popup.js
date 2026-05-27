@@ -159,8 +159,11 @@ function openCallHistory(){
                     const callMedium = callRecord.querySelector('.callRecordMedium');
 
                     // set call record data with labels
+                    let callUrlSimplified = new URL(call.apiurl);
+                    callUrlSimplified = callUrlSimplified.hostname + callUrlSimplified.pathname;
+                    
                     callTitle.textContent = `Call ID: ${call.id}`;
-                    callUrl.textContent = `API URL: ${call.apiurl}`;
+                    callUrl.textContent = `API URL: ${callUrlSimplified}`;
                     callSource.textContent = `UTM Source: ${call.utmsource}`;
                     callMedium.textContent = `UTM Medium: ${call.utmmedium}`;
 
