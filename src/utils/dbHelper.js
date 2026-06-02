@@ -125,13 +125,22 @@ export function fillCookieTable(db){
     }
 }
 
+
+/**
+ * Settings items:
+ * - apiTrackingEnabled:
+ * - cookieTrackingEnabled:
+ * - trackedCallHostnames:
+ * - excludedPages: 
+ */
 export function fillSettingsTable(db) {
     const tx = db.transaction('settings', 'readwrite');
     const store = tx.objectStore('settings');
     const sampleSettings = [
         { key: 'apiTrackingEnabled', value: false },
         { key: 'cookieTrackingEnabled', value: false },
-        { key: 'trackedHostnames', value: ['analytics.google.com', 'clarity.ms', 'track.hubspot.com', 'www.facebook.com'] }
+        { key: 'trackedCallHostnames', value: ['analytics.google.com', 'clarity.ms', 'track.hubspot.com', 'www.facebook.com'] },
+        { key: 'excludedPages', value: ['pagetab']}
     ];
     for (const setting of sampleSettings) {
         store.put(setting);

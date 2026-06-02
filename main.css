@@ -148,7 +148,7 @@ body {
 
 button:hover{
     background-color: lightgray;
-    pointer: cursor;
+    cursor: pointer;
 }
 
 button:active{
