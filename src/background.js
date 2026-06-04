@@ -102,9 +102,98 @@ function handleUrlStorageType(host, url, details) {
     };
 }
 
+// Simple URL validation helper
+function isURL(str){
+    try {
+        const url = new URL(str);
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
 // Handler for 'bin' storage type - extracts from API-level parameters
-function handleBinStorageType(host, url, details) {
-    // check what type of file the payload is. then extract the bin accordingly and handle it. 
+async function handleBinStorageType(host, url, details) {
+    // clarity likely uses a GZIP-compressed binary payload
+    // get the array buffer from the request body
+    const arrayBuffer = details.requestBody?.raw?.[0]?.bytes;
+    if (arrayBuffer) {
+        console.log('BCP 1: entered array buffer handeling for: ', url.href);
+        try{
+            // don't event ask, i have no idea how this works
+            const ds = new DecompressionStream('gzip');
+            const blob = new Blob([arrayBuffer]);
+            const stream = blob.stream().pipeThrough(ds);
+            const decompressed = await new Response(stream).arrayBuffer();
+            const result = new TextDecoder().decode(decompressed);
+
+            // print the decompressed payload to the console
+            //console.log("Decompressed value: ", result);
+            const jsonResult = JSON.parse(result);
+            
+            // is the sequence number greater than 1 ignore the call because on the first sequence api call contains the utm parameters
+
+            if (jsonResult["e"][1] > 1) {
+                console.log("BCP 2: rejected call: ", url.href);
+                return{
+                    source: '',
+                    medium: '',
+                    ignore: 'true'
+                }
+            }
+            console.log('BCP 2: accepted call: ', url.href);
+            // navigate the "a" envelope to find the utm parameters
+            // the "a" envelope contains an array of lists
+            // one one of the lists contains the old and current url with the utm parameters in the query string
+            // unfortunately, there is no fixed position for this list in the "a" envelope so we need to loop through all the lists to find it
+
+            // for each list in the "a" envelope
+            for (const list of jsonResult["a"]){
+                // list[1] should contain the current url with possible utm parameters
+                // list[2] is either empty or contains the old url with utm parameters
+
+                // check if the list contains the url at 1, if so, then we found the right list
+                if (list[1] && isURL(list[1])){
+                    
+                    console.log('BCP 3: found the url-containing list in the "a" envelope: ', list[1]);
+                    // chick if historic url exists
+                    if (list[2] && isURL(list[2])){
+                        // extrack utm parameters from the historic url
+                        console.log('BCP 4: found historic url in the "a" envelope: ', list[2]);
+                        const historicResult = extractUtmsFromUrl(list[2], host);
+                        // if found, return the utm parameters
+                        if (historicResult.source || historicResult.medium) {
+                            console.log('BCP 5: found historic utm values: ', list[2]);
+                            return {
+                                source: historicResult.source || 'notfound',
+                                medium: historicResult.medium || 'notfound'
+                            };
+                        }
+                        console.log('BCP 5-1: no historic utm values found: ', list[2]);
+                    }
+
+                    // check the current url for utm parameters
+                    console.log('BCP 5-2: checking current url for utm parameters: ', list[1]);
+                    const currentResult = extractUtmsFromUrl(list[1], host);
+                    return {
+                        source: currentResult.source || 'notfound',
+                        medium: currentResult.medium || 'notfound'
+                    };
+                }
+            }
+            
+            console.log("unable to find url in 'a' envelope");
+            return {
+                source: 'notfound',
+                medium: 'notfound'
+            }
+
+        } catch(e){
+            console.log("we cooked fr", e.message);
+            console.log("we cooked url", url.href);
+        }
+    }
+
     return {
         source: 'notfound',
         medium: 'notfound',
@@ -179,6 +268,10 @@ function extractUtmsByStorageType(host, url, details) {
 // Helper function to save a call record to the database
 async function saveCallRecord(db, hostname, utmResult, details) {
     const currenturl = await getRecordedCurrentUrl(details);
+    if(utmResult.ignore && utmResult.ignore === 'true'){
+        // currently, this is only used for clarity because only the first clarity call for each page contains the utm parameters
+        return;
+    }
     const callRecord = {
         time: Date.now(),
         hostname: hostname,
@@ -257,7 +350,8 @@ chrome.webRequest.onBeforeRequest.addListener(
         });
     }, 
     // Filter to listen to all urls
-    { urls: ["<all_urls>"] }
+    { urls: ["<all_urls>"] },
+    ["requestBody"]
 );
 
 /**
