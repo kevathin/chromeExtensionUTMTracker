@@ -189,8 +189,8 @@ async function handleBinStorageType(host, url, details) {
             }
 
         } catch(e){
-            console.log("we cooked fr", e.message);
-            console.log("we cooked url", url.href);
+            console.log("we cooked fr:", e.message);
+            console.log("we cooked url:", url.href);
         }
     }
 
