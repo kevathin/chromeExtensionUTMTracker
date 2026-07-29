@@ -16,14 +16,9 @@ export function openDatabase() {
             // Create `hosts` store and indexes if missing
             if (!db.objectStoreNames.contains('hosts')) {
                 const store = db.createObjectStore('hosts', { keyPath: 'hostname', autoIncrement: false});
-                store.createIndex('hostname', 'hostname', { unique: true });
-                store.createIndex('excludeContains', 'excludeContains', { unique: false });
-                store.createIndex('standardname', 'standardname', { unique: false });
-                store.createIndex('storagetype', 'storagetype', { unique: false });
-                store.createIndex('source', 'source', { unique: false });
-                store.createIndex('medium', 'medium', { unique: false });
-                store.createIndex('curid', 'curid', { unique: false });
-                store.createIndex('historicid', 'historicid', { unique: false });
+                store.createIndex('hostname', 'hostname', { unique: true }); // ex: https://px.ads.linkedin.com/collect
+                store.createIndex('excludeContains', 'excludeContains', { unique: false }); // if the hostname contains the following, don't track the api call
+                store.createIndex('standardname', 'standardname', { unique: false }); // ex: LinkedIn Ads
             }
 
             // Create `call` store for API calls
@@ -91,10 +86,12 @@ export function fillHostTable(db){
     const tx = db.transaction('hosts', 'readwrite');
     const store = tx.objectStore('hosts');
     const sampleHosts = [
-        { hostname: 'analytics.google.com', excludeContains: ['script'], standardname: 'Google Analytics', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', curid: 'dl', historicid: 'dr' },
-        { hostname: 'clarity.ms', excludeContains: ['script'], standardname: 'Clarity', storagetype: 'bin', source: 'utm_source', medium: 'utm_medium', curid: 'notfound', historicid: 'notfound'},
-        { hostname: 'track.hubspot.com', excludeContains: ['script'],standardname: 'HubSpot', storagetype: 'url', source: 'utm_source', medium: 'utm_medium', curid: 'pu', historicid: 'r'},
-        { hostname: 'www.facebook.com', excludeContains: ['script'],standardname: 'Facebook Pixel', storagetype: 'json', source: 'utm_source', medium: 'utm_medium', curid: 'ups[pv]', historicid: 'ups[rpv]'}
+        { hostname: 'analytics.google.com', excludeContains: ['script'], standardname: 'Google Analytics'},
+        { hostname: 'clarity.ms', excludeContains: ['script'], standardname: 'Clarity'},
+        { hostname: 'track.hubspot.com', excludeContains: ['script'],standardname: 'HubSpot'},
+        { hostname: 'www.googleadservices.com', excludeContains: ['script'],standardname: 'Google Ads'},
+        { hostname: 'px.ads.linkedin.com', excludeContains: ['script'],standardname: 'LinkedIn Ads'},
+        { hostname: 'www.facebook.com', excludeContains: ['script'],standardname: 'Facebook Pixel'}
     ];
     for (const host of sampleHosts) {
         store.put(host);
