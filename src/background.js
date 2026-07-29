@@ -1,9 +1,9 @@
 import { openDatabase, fillHostTable, fillCookieTable, fillSettingsTable } from './utils/dbHelper.js';
+import { extractorFunctions } from './utils/extractors.js';
+import { isURL, extractUtmsFromUrl } from './utils/extractorHelpers.js';
 /* ------------------------ -------------------------*/
-/*                  api tracking setup               */
+/*              Main API Tracking Function           */
 /* ------------------------ ------------------------ */
-
-
 
 /**
  * Main api call listener
@@ -16,14 +16,29 @@ chrome.webRequest.onBeforeRequest.addListener(
 
         // open the database and search for matching host
         openDatabase().then(async (db) => {
-            // sends the db, hostname, and a function to execute once the host is found (or not found)
+            // finds the matching hostname for the API call host
             const STOREDHOSTDATA = await findMatchingHost(db, HOSTNAME);
 
             // STOREDHOSTDATA is false if the findMatchingHost() timed out or if the api call did not match the hostnames in the db
             if(!STOREDHOSTDATA) return;
 
-            // Extract UTM and user data 
-            const data = extractUtmsByHostname()
+            // obtain extractor function using basic host data.
+            const extractor = extractorFunctions[STOREDHOSTDATA.funcName];
+
+            // check if extractor exists
+            if(!extractor){
+                console.warn(`No extractor found for funcName: ${STOREDHOSTDATA.funcName}`);
+                return;
+            }
+
+            // obtain utm/user data from extractor function
+            const extractedData = extractor(STOREDHOSTDATA, URL, details);
+
+            // check if data was collected
+            if(!extractedData){
+                console.warn(`No extracted data for: ${URL}`);
+                return;
+            }
 
         }).catch(error => {
             console.error('Error opening database:', error);
@@ -33,6 +48,10 @@ chrome.webRequest.onBeforeRequest.addListener(
     { urls: ["<all_urls>"] },
     ["requestBody"]
 );
+
+/* ------------------------ -------------------------*/
+/*              Main Helper Functions                */
+/* ------------------------ ------------------------ */
 
 /**
  * Finds and returns the basic host data from the db if found.
@@ -94,36 +113,6 @@ async function findMatchingHost(db, hostname) {
     });   
 }
 
-/**
- * 
- * 
- * @param {*} STOREDHOSTDATA - The matched basic hostname information
- * @param {*} URL - The API call url
- * @param {*} details -  API call details
- * @returns extracted utm and user ID data (if applicable) in json format 
- */
-async function extractUtmsByHostname(STOREDHOSTDATA, URL, details) {
-    return new Promise((resolve) =>{
-        
-    });
-}
-
-// Simple URL validation helper
-async function isURL(str){
-    try {
-        const url = new URL(str);
-        return true;
-    } catch (e) {
-        return false;
-    }
-}
-
-// Helper function to extract UTM parameters from a given URL string based on host configuration
-async function extractUtmsFromUrl(urlString, host) {
-
-}
-
-// Helper function to save a call record to the database
-async function saveCallRecord(db, hostname, utmResult, details) {
+async function saveCallRecord() {
     
 }

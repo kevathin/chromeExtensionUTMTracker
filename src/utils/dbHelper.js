@@ -19,6 +19,7 @@ export function openDatabase() {
                 store.createIndex('hostname', 'hostname', { unique: true }); // ex: https://px.ads.linkedin.com/collect
                 store.createIndex('excludeContains', 'excludeContains', { unique: false }); // if the hostname contains the following, don't track the api call
                 store.createIndex('standardname', 'standardname', { unique: false }); // ex: LinkedIn Ads
+                store.createIndex('funcName', 'funcName', { unique: false}); //
             }
 
             // Create `call` store for API calls
@@ -86,12 +87,12 @@ export function fillHostTable(db){
     const tx = db.transaction('hosts', 'readwrite');
     const store = tx.objectStore('hosts');
     const sampleHosts = [
-        { hostname: 'analytics.google.com', excludeContains: ['script'], standardname: 'Google Analytics'},
-        { hostname: 'clarity.ms', excludeContains: ['script'], standardname: 'Clarity'},
-        { hostname: 'track.hubspot.com', excludeContains: ['script'],standardname: 'HubSpot'},
-        { hostname: 'www.googleadservices.com', excludeContains: ['script'],standardname: 'Google Ads'},
-        { hostname: 'px.ads.linkedin.com', excludeContains: ['script'],standardname: 'LinkedIn Ads'},
-        { hostname: 'www.facebook.com', excludeContains: ['script'],standardname: 'Facebook Pixel'}
+        { hostname: 'analytics.google.com', excludeContains: ['script'], standardname: 'Google Analytics', funcName:"googleAnalyticsExtractor"},
+        { hostname: 'clarity.ms', excludeContains: ['script'], standardname: 'Clarity',funcName:"clarityExtractor"},
+        { hostname: 'track.hubspot.com', excludeContains: ['script'],standardname: 'HubSpot', funcName:"hubSpotExtractor"},
+        { hostname: 'www.googleadservices.com', excludeContains: ['script'],standardname: 'Google Ads', funcName:"googleAdsExtractor"},
+        { hostname: 'px.ads.linkedin.com', excludeContains: ['script'],standardname: 'LinkedIn Ads', funcName:"linkedInAdsExtractor"},
+        { hostname: 'www.facebook.com', excludeContains: ['script'],standardname: 'Facebook Pixel', funcName:"facebookExtractor"}
     ];
     for (const host of sampleHosts) {
         store.put(host);
