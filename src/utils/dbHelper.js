@@ -10,16 +10,28 @@ export function openDatabase() {
         request.onupgradeneeded = async function(event) {
 
             // fetch the database from the event
-            // 
             const db = event.target.result;
+
+            // boolean checks to see if the object store was created.
+            let hs, sds, cs, ss;
+            hs = sds = cs = ss = false;
+
 
             // Create `hosts` store and indexes if missing
             if (!db.objectStoreNames.contains('hosts')) {
+                hs = true;
                 const store = db.createObjectStore('hosts', { keyPath: 'hostname', autoIncrement: false});
                 store.createIndex('hostname', 'hostname', { unique: true }); // ex: https://px.ads.linkedin.com/collect
-                store.createIndex('excludeContains', 'excludeContains', { unique: false }); // if the hostname contains the following, don't track the api call
+                store.createIndex('excludecontains', 'excludecontains', { unique: false }); // if the hostname contains the following, don't track the api call
                 store.createIndex('standardname', 'standardname', { unique: false }); // ex: LinkedIn Ads
-                store.createIndex('funcName', 'funcName', { unique: false}); //
+                store.createIndex('funcName', 'funcName', { unique: false}); // ex: googleAnalyticsExtractor
+            }
+
+            if (!db.objectStoreNames.contains('sessiondata')){
+                sds = true;
+                const store = db.createObjectStore('sessiondata', { keyPath: 'keyname', autoIncrement: false});
+                store.createIndex('keyname', 'keyname', { unique: true });
+                store.createIndex('keyvalue', 'keyvalue', { unique: false });s
             }
 
             // Create `call` store for API calls
@@ -35,6 +47,7 @@ export function openDatabase() {
 
             // Create `cookies` store with compound primary key (location + name)
             if (!db.objectStoreNames.contains('cookies')) {
+                cs = true;
                 const store = db.createObjectStore('cookies', {keyPath: 'name', autoIncrement: false });
                 store.createIndex('name', 'name', { unique: true });
                 store.createIndex('type', 'type', { unique: false });
@@ -51,15 +64,30 @@ export function openDatabase() {
             }
 
             if(!db.objectStoreNames.contains('settings')) {
+                ss = true;
                 const store = db.createObjectStore('settings', { keyPath: 'key', autoIncrement: false });
                 store.createIndex('key', 'key', { unique: true });
                 store.createIndex('value', 'value', { unique: false });
             }
 
+            // if a specific object store was created, auto fill the data for that object store.
             event.target.transaction.oncomplete = function() {
-                fillHostTable(db);
-                fillCookieTable(db);
-                fillSettingsTable(db);
+                if(hs){
+                    fillHostTable(db);
+                }
+
+                if(sds){
+                    fillSessionDataTable(db);
+                }
+
+                if(cs){
+                    fillCookieTable(db);
+                }
+
+                if(ss){
+                    fillSettingsTable(db);
+                }
+                
             }
         }
 
@@ -142,5 +170,16 @@ export function fillSettingsTable(db) {
     ];
     for (const setting of sampleSettings) {
         store.put(setting);
+    }
+}
+
+export function fillSessionDataTable(db){
+    const tx = db.transaction('sessiondata', 'readwrite');
+    const store = tx.objectStore('sessiondata');
+    const sampleSessionData = [
+        {keyname: 'GA4SessionID', value: 'N/A'}
+    ];
+    for (const sessionData of sampleSessionData){
+        store.put(sessionData);
     }
 }

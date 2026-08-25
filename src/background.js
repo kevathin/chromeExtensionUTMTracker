@@ -1,4 +1,4 @@
-import { openDatabase, fillHostTable, fillCookieTable, fillSettingsTable } from './utils/dbHelper.js';
+import { openDatabase, fillHostTable, fillCookieTable, fillSettingsTable, fillSessionDataTable } from './utils/dbHelper.js';
 import { extractorFunctions } from './utils/extractors.js';
 import { isURL, extractUtmsFromUrl } from './utils/extractorHelpers.js';
 /* ------------------------ -------------------------*/
@@ -16,7 +16,7 @@ chrome.webRequest.onBeforeRequest.addListener(
 
         // open the database and search for matching host
         openDatabase().then(async (db) => {
-            // finds the matching hostname for the API call host
+            // finds the matching host for the API call hostname
             const STOREDHOSTDATA = await findMatchingHost(db, HOSTNAME);
 
             // STOREDHOSTDATA is false if the findMatchingHost() timed out or if the api call did not match the hostnames in the db
@@ -31,8 +31,14 @@ chrome.webRequest.onBeforeRequest.addListener(
                 return;
             }
 
-            // obtain utm/user data from extractor function
-            const extractedData = extractor(STOREDHOSTDATA, URL, details);
+            /* obtain utm/user data from extractor function
+                extractedData structure:
+                {
+                utmSource:{{value}},
+                utmMedium:{{value}}
+                }
+            */
+            const extractedData = await extractor(STOREDHOSTDATA, URL, details);
 
             // check if data was collected
             if(!extractedData){
@@ -40,6 +46,9 @@ chrome.webRequest.onBeforeRequest.addListener(
                 return;
             }
 
+            await saveCallRecord(STOREDHOSTDATA, extractedData, details);
+
+            db.close();
         }).catch(error => {
             console.error('Error opening database:', error);
         });
@@ -67,6 +76,7 @@ async function findMatchingHost(db, hostname) {
 
         let settled = false;
 
+        // if the timer runs out, it will resolve the promise with a value of null
         const safeResolve = (value) =>{
             if (settled) return;
             settled = true;
@@ -93,7 +103,7 @@ async function findMatchingHost(db, hostname) {
             if (cursor) {
                 const host = cursor.value;
                 // if hostname is found and hostname does not contain the excluding values
-                if (hostname.includes(host.hostname) && !host['excludeContains']?.some(excludeStr => hostname.includes(excludeStr))) {
+                if (hostname.includes(host.hostname) && !host['excludecontains']?.some(excludeStr => hostname.includes(excludeStr))) {
                     //
                     safeResolve(host);
                 } else {
@@ -114,5 +124,7 @@ async function findMatchingHost(db, hostname) {
 }
 
 async function saveCallRecord() {
-    
+    return new Promise((resolve)=>{
+
+    });
 }

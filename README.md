@@ -32,7 +32,7 @@ vite.config.js: Vite configuration
 //-------------------------------------------------------//
 //------------------Database Structure-------------------//
 //-------------------------------------------------------//
-
+--------- pending update -------
 call:
 --> id: unqiue api call id (pk ordered)
 --> time: the time the api call was made
